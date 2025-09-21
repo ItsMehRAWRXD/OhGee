@@ -40,7 +40,7 @@ namespace KimiAppNative
                 _taskbarIcon.Icon = System.Drawing.SystemIcons.Application;
             }
             
-            _taskbarIcon.ToolTipText = "OhGee - AI Assistant Hub - Ctrl+Shift+G (Kimi), Ctrl+Shift+C (Cursor), Ctrl+Shift+H (ChatGPT), Ctrl+Shift+A (Chat)";
+            _taskbarIcon.ToolTipText = "OhGee - AI Assistant Hub - Ctrl+Shift+Numpad1 (Kimi), Ctrl+Shift+Numpad2 (Cursor), Ctrl+Shift+Numpad3 (ChatGPT), Ctrl+Shift+Numpad4 (Chat), Ctrl+Shift+Numpad5 (GUI Creator), Ctrl+Shift+Numpad6 (IDE)";
             
             // Create context menu
             var contextMenu = new ContextMenu();
@@ -76,6 +76,14 @@ namespace KimiAppNative
                 Icon = new TextBlock { Text = "🤖", FontSize = 16 }
             };
             chatMenuItem.Click += (s, e) => ShowChatWindow();
+
+            // GUI Creator menu item
+            var guiCreatorMenuItem = new MenuItem
+            {
+                Header = "🎨 Open GUI Template Creator",
+                Icon = new TextBlock { Text = "🎨", FontSize = 16 }
+            };
+            guiCreatorMenuItem.Click += (s, e) => ShowGuiCreator();
             
             // Separator
             var separator = new Separator();
@@ -89,10 +97,20 @@ namespace KimiAppNative
             exitMenuItem.Click += (s, e) => Application.Current.Shutdown();
             
             // Add items to context menu
+            // IDE menu item
+            var ideMenuItem = new MenuItem
+            {
+                Header = "🚀 OhGees IDE (Ctrl+Shift+Numpad6)",
+                Foreground = Brushes.White
+            };
+            ideMenuItem.Click += (s, e) => ShowIDE();
+
             contextMenu.Items.Add(kimiMenuItem);
             contextMenu.Items.Add(cursorMenuItem);
             contextMenu.Items.Add(chatgptMenuItem);
             contextMenu.Items.Add(chatMenuItem);
+            contextMenu.Items.Add(guiCreatorMenuItem);
+            contextMenu.Items.Add(ideMenuItem);
             contextMenu.Items.Add(separator);
             contextMenu.Items.Add(exitMenuItem);
             
@@ -131,6 +149,46 @@ namespace KimiAppNative
                     chatWindow.Activate();
                     chatWindow.Topmost = true;
                     chatWindow.Topmost = false;
+                }
+            }
+        }
+
+        private void ShowGuiCreator()
+        {
+            // Find the GUI creator window from the application
+            var guiCreator = Application.Current.Windows.OfType<GuiTemplateCreator>().FirstOrDefault();
+            if (guiCreator != null)
+            {
+                if (guiCreator.Visibility == Visibility.Visible)
+                {
+                    guiCreator.Hide();
+                }
+                else
+                {
+                    guiCreator.Show();
+                    guiCreator.Activate();
+                    guiCreator.Topmost = true;
+                    guiCreator.Topmost = false;
+                }
+            }
+        }
+
+        private void ShowIDE()
+        {
+            // Find the IDE window from the application
+            var ideWindow = Application.Current.Windows.OfType<IDE.IDEMainWindow>().FirstOrDefault();
+            if (ideWindow != null)
+            {
+                if (ideWindow.Visibility == Visibility.Visible)
+                {
+                    ideWindow.Hide();
+                }
+                else
+                {
+                    ideWindow.Show();
+                    ideWindow.Activate();
+                    ideWindow.Topmost = true;
+                    ideWindow.Topmost = false;
                 }
             }
         }

@@ -32,5 +32,6 @@ echo   Ctrl+Shift+Numpad1 - Open Kimi AI
 echo   Ctrl+Shift+Numpad2 - Open Cursor
 echo   Ctrl+Shift+Numpad3 - Open ChatGPT
 echo   Ctrl+Shift+Numpad4 - Open Native Chat Assistant
+echo   Ctrl+Shift+Numpad5 - Open GUI Template Creator
 echo.
 echo Right-click the system tray icon to access the menu.
