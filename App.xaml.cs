@@ -30,24 +30,7 @@ namespace KimiAppNative
         [DllImport("user32.dll")]
         private static extern int GetLastError();
 
-        // MSG structure for Windows messages
-        [StructLayout(LayoutKind.Sequential)]
-        public struct MSG
-        {
-            public IntPtr hwnd;
-            public uint message;
-            public IntPtr wParam;
-            public IntPtr lParam;
-            public uint time;
-            public POINT pt;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct POINT
-        {
-            public int x;
-            public int y;
-        }
+        // Use the built-in MSG structure from System.Windows.Interop
 
         private IntPtr _windowHandle;
         private MainWindow _mainWindow;
