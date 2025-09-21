@@ -42,7 +42,7 @@ namespace KimiAppNative
             // Populate model combo box
             ModelComboBox.ItemsSource = _availableModels;
             ModelComboBox.DisplayMemberPath = "DisplayName";
-            ModelComboBox.SelectedItem = _availableModels.FirstOrDefault(m => m.Name == "openai");
+            ModelComboBox.SelectedItem = _availableModels.FirstOrDefault(m => m.Name == "localhost");
             
             // Enable window dragging
             this.MouseDown += (sender, e) =>
@@ -56,6 +56,14 @@ namespace KimiAppNative
         {
             return new List<AIModel>
             {
+                new AIModel
+                {
+                    Name = "localhost",
+                    DisplayName = "🏠 Localhost Panel (RawrZ)",
+                    ApiUrl = "http://localhost:8080/api/ai/chat",
+                    RequiresApiKey = false,
+                    ApiKeyEnvVar = ""
+                },
                 new AIModel
                 {
                     Name = "openai",
@@ -79,14 +87,6 @@ namespace KimiAppNative
                     ApiUrl = "https://api.deepseek.com/v1/chat/completions",
                     RequiresApiKey = true,
                     ApiKeyEnvVar = "DEEPSEEK_API_KEY"
-                },
-                new AIModel
-                {
-                    Name = "mock",
-                    DisplayName = "🎭 Mock Response (Demo)",
-                    ApiUrl = "",
-                    RequiresApiKey = false,
-                    ApiKeyEnvVar = ""
                 }
             };
         }
@@ -96,12 +96,18 @@ namespace KimiAppNative
             var welcomeMessage = new ChatMessage
             {
                 IsUser = false,
-                Content = "👋 Hello! I'm your AI assistant. I can help you with various tasks including:\n\n" +
-                         "• **Code assistance** - Writing, debugging, and explaining code\n" +
-                         "• **Creative writing** - Stories, articles, and content creation\n" +
-                         "• **Problem solving** - Math, logic, and analytical questions\n" +
-                         "• **Learning support** - Explanations and educational content\n\n" +
-                         "Choose a model from the dropdown above and start chatting!",
+                Content = "👋 Welcome to OhGee - AI Assistant Hub!\n\n" +
+                         "**Available Models:**\n" +
+                         "• 🏠 **Localhost Panel** - Connect to your RawrZ server (default)\n" +
+                         "• 🤖 **ChatGPT** - OpenAI's GPT models\n" +
+                         "• 🧠 **Kimi** - Moonshot AI models\n" +
+                         "• 🔍 **DeepSeek** - Advanced reasoning models\n\n" +
+                         "**Features:**\n" +
+                         "• Real-time streaming responses\n" +
+                         "• System tray integration\n" +
+                         "• Global hotkeys for quick access\n" +
+                         "• Native Windows performance\n\n" +
+                         "Start by selecting a model and asking your question!",
                 Timestamp = DateTime.Now
             };
             
@@ -126,6 +132,14 @@ namespace KimiAppNative
                     {
                         UpdateStatus($"✅ {selectedModel.DisplayName} ready");
                     }
+                }
+                else if (selectedModel.Name == "localhost")
+                {
+                    UpdateStatus($"🏠 {selectedModel.DisplayName} - Make sure RawrZ server is running on port 8080");
+                }
+                else
+                {
+                    UpdateStatus($"✅ {selectedModel.DisplayName} ready");
                 }
             }
         }
@@ -201,9 +215,9 @@ namespace KimiAppNative
 
         private async Task GetAIResponse(string userMessage, ChatMessage aiMessage)
         {
-            if (_currentModel.Name == "mock")
+            if (_currentModel.Name == "localhost")
             {
-                await SimulateTypingResponse(aiMessage, GetMockResponse(userMessage));
+                await GetLocalhostResponse(userMessage, aiMessage);
                 return;
             }
 
@@ -306,41 +320,58 @@ namespace KimiAppNative
             UpdateMessageUI(aiMessage);
         }
 
-        private async Task SimulateTypingResponse(ChatMessage aiMessage, string response)
+        private async Task GetLocalhostResponse(string userMessage, ChatMessage aiMessage)
         {
-            _isTyping = true;
-            var words = response.Split(' ');
-            var currentContent = new StringBuilder();
-
-            foreach (var word in words)
+            try
             {
-                if (!_isTyping) break;
+                // First try to connect to localhost panel
+                var healthResponse = await _httpClient.GetAsync("http://localhost:8080/health");
+                if (!healthResponse.IsSuccessStatusCode)
+                {
+                    aiMessage.Content = "❌ Localhost panel is not running. Please start the RawrZ server on port 8080.";
+                    aiMessage.IsStreaming = false;
+                    UpdateMessageUI(aiMessage);
+                    return;
+                }
+
+                // Try to use the CLI endpoint for AI-like responses
+                var requestBody = new
+                {
+                    command = "ai",
+                    args = new[] { userMessage }
+                };
+
+                var json = JsonConvert.SerializeObject(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.PostAsync("http://localhost:8080/cli", content);
                 
-                currentContent.Append(word + " ");
-                aiMessage.Content = currentContent.ToString();
-                UpdateMessageUI(aiMessage);
-                
-                await Task.Delay(100); // Typing delay
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    var result = JsonConvert.DeserializeObject<dynamic>(responseContent);
+                    
+                    if (result?.success == true)
+                    {
+                        aiMessage.Content = result.result?.ToString() ?? "Response received but no content.";
+                    }
+                    else
+                    {
+                        aiMessage.Content = "❌ Localhost panel responded but couldn't process the request.";
+                    }
+                }
+                else
+                {
+                    aiMessage.Content = $"❌ Localhost panel error: {response.StatusCode}";
+                }
+            }
+            catch (Exception ex)
+            {
+                aiMessage.Content = $"❌ Failed to connect to localhost panel: {ex.Message}\n\nMake sure the RawrZ server is running on http://localhost:8080";
             }
 
             aiMessage.IsStreaming = false;
             UpdateMessageUI(aiMessage);
-        }
-
-        private string GetMockResponse(string userMessage)
-        {
-            var responses = new[]
-            {
-                "That's an interesting question! Let me think about this...\n\nBased on what you've asked, I believe the key points to consider are:\n\n1. **Understanding the context** - It's important to fully grasp the situation\n2. **Analyzing the options** - Consider all possible approaches\n3. **Making a decision** - Choose the best path forward\n\nWould you like me to elaborate on any of these points?",
-                
-                "Great question! Here's my analysis:\n\n```python\n# Example code snippet\ndef analyze_problem(input_data):\n    result = process_data(input_data)\n    return result\n```\n\nThis approach should help you achieve your goal. Let me know if you need more details!",
-                
-                "I understand what you're looking for. Here's a comprehensive response:\n\n## Key Insights\n\n- **First point**: This is crucial for success\n- **Second point**: Don't overlook this aspect\n- **Third point**: This ties everything together\n\n### Next Steps\n1. Review the information above\n2. Consider your specific situation\n3. Take action based on your needs\n\nIs there anything specific you'd like me to clarify?",
-                
-                "Excellent question! Let me break this down for you:\n\n> **Important Note**: This is a complex topic that requires careful consideration.\n\n**Here's what I recommend:**\n\n- Start with the basics\n- Build up your understanding gradually\n- Practice with real examples\n- Don't hesitate to ask follow-up questions\n\nI'm here to help you succeed! What would you like to explore next?"
-            };
-
-            return responses[new Random().Next(responses.Length)];
         }
 
         private string GetModelName(string modelKey)
